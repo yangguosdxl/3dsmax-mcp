@@ -351,9 +351,8 @@ static std::string HandleMaxScript(
         BOOL ok = FALSE;
 
         try {
-            ok = ExecuteMAXScriptScript(
+            ok = HandlerHelpers::ExecuteMAXScriptCompat(
                 wcmd.c_str(),
-                MAXScript::ScriptSource::NonEmbedded,
                 TRUE,    // quietErrors: diagnostics belong in the response/log
                 &fpv,    // result goes here
                 TRUE     // logQuietErrors

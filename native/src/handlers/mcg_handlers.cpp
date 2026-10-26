@@ -308,7 +308,7 @@ json ModifierProof(
         {"target", NodeIdentityJson(target)},
         {"modifier", {
             {"index", modifierIndex},
-            {"name", WideToUtf8(modifier->GetName(false).data())},
+            {"name", WideToUtf8(ObjectDisplayName(modifier).data())},
             {"class_name", WideToUtf8(modifier->ClassName().data())},
             {"class_id", ClassIDJson(modifier->ClassID())},
             {"graph_path", graphPath},

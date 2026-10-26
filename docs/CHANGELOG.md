@@ -5,6 +5,8 @@ All notable changes to this project are documented here.
 ## [Unreleased]
 
 - 新增 3ds Max 2021 原生桥接目标：使用 Visual Studio 2017 / v141、3ds Max 2020 SDK 的二进制接口和 Qt 5.12.5。安装器现在会扫描本机固定磁盘上的 Autodesk 安装目录，不再只检查 C 盘。
+- 完成 3ds Max 2021 原生 API 兼容层：适配 MAXScript 执行、类名、子动画名称、材质槽名和单位接口差异。`create_object` 在 2021 中使用显式单位矩阵，修复 `center` 模式产生 NaN 变换；自动实例选择不再用短连接探测单管道实例，避免 2021 桥接短暂不可达。
+- 安装器与 MCP 服务现在能读取并保留 3ds Max 2021 写入的 UTF-16LE `mcp_config.ini`。
 - A missing bridge pipe (`BRIDGE_DOWN`, "Named pipe ... not found") hints at `list_max_instances` and starting 3ds Max instead of a missing scene object.
 - `replace_material` and `batch_replace_materials` take `include_sub_materials` (default true; false replaces objects' own materials only) and `source_from`, which limits the source search to one place: `node`, `sub_material`, `material_editor`, `scene_materials` or `material_library`. The source can now also come from the scene materials or the current material library, and the reply reports where it was found (`source_found_in`). A batch entry can carry its own `source_from`, and a native batch reports `total_replaced_slots`. The MAXScript fallback supports both options; a native bridge older than this release ignores them, and the reply then warns that `source_from` or `include_sub_materials=false` may not have applied.
 - `replace_material` with `preview=true` lists the target's matches even when the source doesn't exist yet (`source_exists: false`, with a warning). Results explain the argument direction (source = the material to apply): `no_match` and `no_objects` warn that the arguments may be reversed, and `blocked` says they are not. A batch preview without the native bridge marks entries whose real run can differ with `depends_on_entries`.

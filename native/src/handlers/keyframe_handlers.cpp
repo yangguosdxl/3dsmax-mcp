@@ -323,7 +323,7 @@ static std::vector<int> KeyIndicesForStyle(Control* ctrl, const json& p, Interfa
 static std::string ControllerClass(Control* ctrl) {
     if (!ctrl) return "";
     MSTR name;
-    ctrl->GetClassName(name, false);
+    GetUnlocalizedClassName(ctrl, name);
     return WideToUtf8(name.data());
 }
 

@@ -26,8 +26,8 @@ Automate everything!
 - Windows and Autodesk **3ds Max 2021 and 2023–2027**
 - An MCP client, such as Claude Desktop, Codex or Cursor
 
-Prebuilt bridges are included for 2023–2027. 3ds Max 2021 is supported from
-source and requires the 2021 SDK, Visual Studio 2017 (v141), and Qt 5.12.5.
+Prebuilt bridges are included for 2021 and 2023–2027. Building for 3ds Max 2021
+requires the 2021 SDK, Visual Studio 2017 (v141), and Qt 5.12.5.
 
 ## Quick start
 

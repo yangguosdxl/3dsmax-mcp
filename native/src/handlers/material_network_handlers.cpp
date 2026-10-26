@@ -753,14 +753,14 @@ static std::vector<MaterialLink> MaterialLinks(MtlBase* base, TimeValue t) {
     if (base->SuperClassID() == MATERIAL_CLASS_ID) {
         auto* mtl = static_cast<Mtl*>(base);
         for (int i = 0; i < mtl->NumSubMtls(); ++i) {
-            MSTR label = mtl->GetSubMtlSlotName(i, false);
+            MSTR label = SubMtlSlotName(mtl, i);
             add(mtl->GetSubMtl(i), "material:" + std::to_string(i),
                 label.data() && *label.data() ? WideToUtf8(label.data()) : "subMaterial[" + std::to_string(i + 1) + "]",
                 "material", 0);
         }
     }
     for (int i = 0; i < base->NumSubTexmaps(); ++i) {
-        MSTR label = base->GetSubTexmapSlotName(i, false);
+        MSTR label = SubTexmapSlotName(base, i);
         add(base->GetSubTexmap(i), "map:" + std::to_string(i),
             label.data() && *label.data() ? WideToUtf8(label.data()) : "map[" + std::to_string(i) + "]",
             "map", base->MapSlotType(i));
@@ -818,7 +818,7 @@ static void TraverseMaterialGraph(MtlBase* base, const std::string& parentId,
         json node = {{"id", id}, {"kind", KindName(base)}, {"class", ClassName(base)},
                      {"name", BaseName(base)}, {"handle", std::to_string((uint64_t)Animatable::GetHandleByAnim(base))}};
         // "class" is the localized UI label; consumers matching class names need the script token.
-        const std::string internalClass = SanitizeScriptName(WideToUtf8(base->ClassName(false).data()));
+        const std::string internalClass = SanitizeScriptName(WideToUtf8(AnimatableClassNameText(base).data()));
         if (internalClass != node["class"].get<std::string>()) node["classInternal"] = internalClass;
         if (fileUnset) node["fileUnset"] = true;
         if (!parentId.empty()) node["parentId"] = parentId;

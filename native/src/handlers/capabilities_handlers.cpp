@@ -107,7 +107,7 @@ void DetectKnownPlugin(
 
     const MCHAR* names[] = {
         descriptor->InternalName(),
-        descriptor->NonLocalizedClassName(),
+        NonLocalizedClassDescName(descriptor),
         descriptor->ClassName(),
     };
 

@@ -292,6 +292,16 @@ SPECIALTY_TOOL_MODULES = (
 )
 
 
+def _read_ini_text(path: Path) -> str:
+    """按 BOM 读取 INI；3ds Max 2021 可能将配置写成 UTF-16LE。"""
+    data = path.read_bytes()
+    if data.startswith(b"\xff\xfe"):
+        return data[2:].decode("utf-16-le")
+    if data.startswith(b"\xfe\xff"):
+        return data[2:].decode("utf-16-be")
+    return data[3:].decode("utf-8") if data.startswith(b"\xef\xbb\xbf") else data.decode("utf-8")
+
+
 def _tool_profile() -> str:
     value = os.environ.get("MCP_TOOL_PROFILE") or os.environ.get("THREEDSMAX_MCP_TOOL_PROFILE")
     if value is not None:
@@ -303,11 +313,11 @@ def _tool_profile() -> str:
         config_path = Path(local_appdata) / "3dsmax-mcp" / "mcp_config.ini"
         parser = configparser.ConfigParser()
         try:
-            parser.read(config_path, encoding="utf-8")
+            parser.read_string(_read_ini_text(config_path), source=str(config_path))
             normalized = parser.get("mcp", "tool_profile", fallback="").strip().lower()
             if normalized in {"core", "full", "progressive"}:
                 return normalized
-        except (OSError, configparser.Error):
+        except (OSError, UnicodeError, configparser.Error):
             pass
     return "full"
 

@@ -20,7 +20,9 @@ public:
     int IsPublic() override { return TRUE; }
     void* Create(BOOL) override { return new MCPBridgeShellGUP(); }
     const TCHAR* ClassName() override { return _T("MCP Bridge"); }
+#if MAX_SDK_VERSION >= 2023
     const TCHAR* NonLocalizedClassName() override { return _T("MCP Bridge"); }
+#endif
     SClass_ID SuperClassID() override { return GUP_CLASS_ID; }
     Class_ID ClassID() override { return MCP_BRIDGE_CLASS_ID; }
     const TCHAR* Category() override { return _T("MCP"); }

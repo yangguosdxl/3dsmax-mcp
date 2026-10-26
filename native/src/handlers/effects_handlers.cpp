@@ -20,7 +20,7 @@ std::string NativeHandlers::GetEffects(const std::string& params, MCPBridgeGUP* 
 
             json entry;
             entry["index"] = i + 1; // 1-based for MAXScript compat
-            entry["name"] = WideToUtf8(atmos->GetName(false).data());
+            entry["name"] = WideToUtf8(ObjectDisplayName(atmos).data());
             entry["class"] = WideToUtf8(atmos->ClassName().data());
             entry["active"] = atmos->Active(t) ? true : false;
 
@@ -45,7 +45,7 @@ std::string NativeHandlers::GetEffects(const std::string& params, MCPBridgeGUP* 
 
             json entry;
             entry["index"] = i + 1;
-            entry["name"] = WideToUtf8(fx->GetName(false).data());
+            entry["name"] = WideToUtf8(ObjectDisplayName(fx).data());
             entry["class"] = WideToUtf8(fx->ClassName().data());
             entry["active"] = fx->Active(t) ? true : false;
             renderEffects.push_back(entry);
@@ -115,14 +115,14 @@ std::string NativeHandlers::DeleteEffect(const std::string& params, MCPBridgeGUP
             if (index < 1 || index > count)
                 throw std::runtime_error("Atmospheric index out of range");
             Atmospheric* atmos = ip->GetAtmospheric(index - 1);
-            if (atmos) name = WideToUtf8(atmos->GetName(false).data());
+            if (atmos) name = WideToUtf8(ObjectDisplayName(atmos).data());
             ip->DeleteAtmosphere(index - 1);
         } else {
             int count = ip->NumEffects();
             if (index < 1 || index > count)
                 throw std::runtime_error("Effect index out of range");
             Effect* fx = ip->GetEffect(index - 1);
-            if (fx) name = WideToUtf8(fx->GetName(false).data());
+            if (fx) name = WideToUtf8(ObjectDisplayName(fx).data());
             ip->DeleteEffect(index - 1);
         }
 

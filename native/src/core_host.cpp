@@ -138,8 +138,10 @@ int GdiplusEnsureStarted(void*, int* started, McpSink error) {
 }
 
 // AgentViewport
+#if MAX_SDK_VERSION >= 2023
 static_assert(std::is_trivially_copyable_v<AgentViewport::CameraState>,
               "McpAgentCameraState copies AgentViewport::CameraState as bytes");
+#endif
 static_assert(sizeof(AgentViewport::CameraState) <= sizeof(McpAgentCameraState::bytes) &&
               alignof(AgentViewport::CameraState) <= alignof(McpAgentCameraState),
               "McpAgentCameraState is too small for AgentViewport::CameraState");

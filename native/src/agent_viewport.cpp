@@ -7,7 +7,9 @@
 #include <IViewPanel.h>
 #include <IViewPanelManager.h>
 #include <Graphics/IViewportViewSetting.h>
+#if MAX_SDK_VERSION >= 2023
 #include <Graphics/ViewSystem/IActiveshadeFragment.h>
+#endif
 #if MAX_SDK_VERSION >= 2024
 #include <Graphics/ViewSystem/IViewportFragmentManager.h>
 #endif
@@ -15,7 +17,9 @@
 #include <Rendering/IInteractiveRenderer.h>
 #include <hold.h>
 #include <GraphicsWindow.h>
+#if MAX_SDK_VERSION >= 2023
 #include <IPerViewportFilter.h>
+#endif
 #include <mesh.h>
 #include <notify.h>
 #include <cmath>
@@ -26,6 +30,17 @@ using json = nlohmann::json;
 using namespace HandlerHelpers;
 namespace AgentViewport {
 namespace {
+#if MAX_SDK_VERSION >= 2023
+using ActiveShadeFragmentPtr = MaxSDK::Graphics::IActiveShadeFragment*;
+#else
+// 2021 没有可直接查询的 ActiveShade Fragment；保留同签名桩，使其余功能可编译。
+struct ActiveShadeFragmentStub {
+    bool IsEnabled() const { return false; }
+    void Enable(bool) {}
+    void SetActiveShadeRenderer(Renderer*) {}
+};
+using ActiveShadeFragmentPtr = ActiveShadeFragmentStub*;
+#endif
 // Shell code evaluates here, with the shell's dialog check. The one-argument
 // HandlerHelpers::RunMAXScript is the core's, through its host binding.
 std::string RunMAXScript(const std::string& script) {
@@ -280,7 +295,10 @@ public:
     }
 };
 
-MaxSDK::Graphics::IActiveShadeFragment* ShadeFragment() {
+ActiveShadeFragmentPtr ShadeFragment() {
+#if MAX_SDK_VERSION < 2023
+    return nullptr;
+#else
     auto* view=View();
     if(!view) return nullptr;
 #if MAX_SDK_VERSION >= 2024
@@ -289,6 +307,7 @@ MaxSDK::Graphics::IActiveShadeFragment* ShadeFragment() {
 #else
     ActivateOwnedView activation;
     return MaxSDK::Graphics::GetActiveShadeFragmentFromActiveViewport();
+#endif
 #endif
 }
 
@@ -1007,10 +1026,12 @@ json Execute(const json& p) {
             Point3 hitPoint, hitNormal; bool hitShape=false;
             for(auto* node:nodes) {
                 if(node->IsNodeHidden()) continue;
+#if MAX_SDK_VERSION >= 2023
                 {
                     auto* filter=static_cast<ViewExp23&>(Get()).GetIPerViewportFilter();
                     if(filter && filter->IsNodeFiltered(node)) continue;
                 }
+#endif
                 auto* object=node->EvalWorldState(time).obj;
                 Get();
                 if(!object) continue;

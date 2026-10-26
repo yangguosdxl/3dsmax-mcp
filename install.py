@@ -111,9 +111,23 @@ def choose_tool_profile(requested: str | None = None) -> str:
     return {"2": "progressive", "3": "core"}.get(choice, "full")
 
 
+def read_text_with_encoding(path: Path) -> tuple[str, str]:
+    """读取配置文件并保留 BOM 指示的原始编码。"""
+    if not path.exists():
+        return "", "utf-8"
+    data = path.read_bytes()
+    if data.startswith(b"\xff\xfe"):
+        return data[2:].decode("utf-16-le"), "utf-16"
+    if data.startswith(b"\xfe\xff"):
+        return data[2:].decode("utf-16-be"), "utf-16"
+    if data.startswith(b"\xef\xbb\xbf"):
+        return data[3:].decode("utf-8"), "utf-8-sig"
+    return data.decode("utf-8"), "utf-8"
+
+
 def set_ini_value(path: Path, section: str, key: str, value: str) -> None:
     """Update one INI value while preserving unrelated comments and formatting."""
-    text = path.read_text("utf-8") if path.exists() else ""
+    text, encoding = read_text_with_encoding(path)
     lines = text.splitlines()
     section_start: int | None = None
     section_end = len(lines)
@@ -143,7 +157,8 @@ def set_ini_value(path: Path, section: str, key: str, value: str) -> None:
         else:
             lines.insert(section_end, replacement)
 
-    path.write_text("\n".join(lines) + "\n", "utf-8")
+    # 3ds Max 2021 可能把 INI 写成 UTF-16LE；保持原编码以避免下次读取失败。
+    path.write_text("\n".join(lines) + "\n", encoding)
 
 # Extract list of supported years from GUP_SRCS
 MAX_YEARS = sorted(GUP_SRCS.keys(), reverse=True)

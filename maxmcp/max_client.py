@@ -513,7 +513,18 @@ class MaxClient:
         if self.transport == "tcp":
             return False
         try:
-            return self._probe_pipe_available(self._resolve_pipe_name())
+            target = self._bound_target
+            if self._pinned_pipe_name is not None:
+                target = self._target(self._pinned_pipe_name, "explicit")
+            if target is None and self._startup_pipe:
+                target = self._target(self._startup_pipe, self._startup_source)
+            if target is None:
+                target = self._default_target()
+            pid = target.get("target_pid")
+            if type(pid) is int and pid > 0:
+                # 有 PID 时按进程存活判断，避免探测连接抢先消耗 2021 的单管道实例。
+                return not process_gone(pid)
+            return self._probe_pipe_available(target["target_pipe"])
         except (ConnectionError, TimeoutError):
             return False
 
@@ -535,6 +546,15 @@ class MaxClient:
     def _active_instance(self) -> dict[str, Any] | None:
         return self._load_instance(self._config_dir() / "active_instance.json")
 
+    def _instance_record_live(self, data: dict[str, Any]) -> bool:
+        """判断原生实例记录是否仍存活，避免用短连接探测破坏单实例管道。"""
+        pid = data.get("pid")
+        pipe = data.get("pipe")
+        if (type(pid) is int and pid > 0 and isinstance(pipe, str)
+                and pipe.casefold() == rf"\\.\pipe\3dsmax-mcp-pid-{pid}".casefold()):
+            return not process_gone(pid)
+        return self._probe_pipe_available(pipe) if isinstance(pipe, str) else False
+
     @staticmethod
     def _target(pipe: str, source: str) -> dict[str, Any]:
         match = re.search(r"-pid-(\d+)$", pipe)
@@ -549,7 +569,7 @@ class MaxClient:
                 updated = path.stat().st_mtime_ns
             except OSError:
                 continue
-            if data and self._probe_pipe_available(data["pipe"]):
+            if data and self._instance_record_live(data):
                 live.append({**data, "updated": updated})
             elif data:
                 self._prune_exited_instance(path, data, updated)
@@ -575,7 +595,7 @@ class MaxClient:
             # scan. Recheck both identity and liveness immediately before unlink.
             if path.stat().st_mtime_ns != updated or self._load_instance(path) != data:
                 return
-            if self._probe_pipe_available(data["pipe"]) or not process_gone(pid):
+            if self._instance_record_live(data) or not process_gone(pid):
                 return
             path.unlink()
         except OSError:
@@ -588,7 +608,7 @@ class MaxClient:
             claimed = (self._config_dir() / "active_instance.json").stat().st_mtime_ns
         except OSError:
             claimed = 0
-        if active and self._probe_pipe_available(active["pipe"]) and (not live or claimed >= live[0]["updated"]):
+        if active and self._instance_record_live(active) and (not live or claimed >= live[0]["updated"]):
             return self._target(active["pipe"], "claim")
         return self._target(live[0]["pipe"] if live else DEFAULT_PIPE_NAME, "default")
 

@@ -183,7 +183,8 @@ target_link_libraries(mcp_bridge_settings INTERFACE
     comctl32.lib
 )
 if(MSVC)
-    target_compile_options(mcp_bridge_settings INTERFACE /W3 /MP /EHa)
+    # 源文件统一使用 UTF-8；VS2017 默认按系统代码页读取会破坏中文注释后的代码。
+    target_compile_options(mcp_bridge_settings INTERFACE /W3 /MP /EHa /utf-8)
 endif()
 
 # The runtime library is a target property, not a usage requirement.

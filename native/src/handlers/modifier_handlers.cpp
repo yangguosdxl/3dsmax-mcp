@@ -23,7 +23,7 @@ static json ModifierStackJson(INode* node) {
         if (!mod) continue;
         stack.push_back({
             {"index", i + 1},
-            {"name", WideToUtf8(mod->GetName(false).data())},
+            {"name", WideToUtf8(ObjectDisplayName(mod).data())},
             {"class", WideToUtf8(mod->ClassName().data())},
             {"enabled", mod->IsEnabled() != 0},
             {"enabledInViews", mod->IsEnabledInViews() != 0},
@@ -53,7 +53,7 @@ static int FindModifierIndex(INode* node, const std::string& modName) {
     std::wstring wname = Utf8ToWide(modName);
     for (int i = 0; i < dobj->NumModifiers(); i++) {
         Modifier* mod = dobj->GetModifier(i);
-        if (mod && _wcsicmp(mod->GetName(false).data(), wname.c_str()) == 0) {
+        if (mod && _wcsicmp(ObjectDisplayName(mod).data(), wname.c_str()) == 0) {
             return i;
         }
     }
@@ -129,7 +129,7 @@ std::string NativeHandlers::AddModifier(const std::string& params, MCPBridgeGUP*
         json result = NodeIdentityJson(node);
         result["message"] = "Added " + WideToUtf8(mod->ClassName().data()) + " to " + WideToUtf8(node->GetName());
         result["addedModifier"] = {
-            {"name", WideToUtf8(mod->GetName(false).data())},
+            {"name", WideToUtf8(ObjectDisplayName(mod).data())},
             {"class", WideToUtf8(mod->ClassName().data())},
         };
         result["stack"] = ModifierStackJson(node);
@@ -235,7 +235,7 @@ std::string NativeHandlers::SetModifierState(const std::string& params, MCPBridg
 
         GetCOREInterface()->RedrawViews(GetCOREInterface()->GetTime());
 
-        std::string modDisplayName = WideToUtf8(mod->GetName(false).data());
+        std::string modDisplayName = WideToUtf8(ObjectDisplayName(mod).data());
         json result = NodeIdentityJson(node);
         result["message"] = "Set state on " + modDisplayName + " (" + WideToUtf8(node->GetName()) + ")";
         result["modifier"] = {
@@ -362,7 +362,7 @@ std::string NativeHandlers::MakeModifierUnique(const std::string& params, MCPBri
         Modifier* mod = dobj->GetModifier(idx);
         if (!mod) throw std::runtime_error("Could not get modifier at index");
 
-        std::string modDisplayName = WideToUtf8(mod->GetName(false).data());
+        std::string modDisplayName = WideToUtf8(ObjectDisplayName(mod).data());
 
         // Max's own Make Unique: it knows which stacks share the modifier and
         // keeps the slot's ModContext (gizmo, sub-object selection).
@@ -514,7 +514,7 @@ std::string NativeHandlers::SetModifierProperty(const std::string& params, MCPBr
                 hits.push_back({
                     {"object", nodeName},
                     {"handle", NodeHandle(node)},
-                    {"modifier", WideToUtf8(mod->GetName(false).data())},
+                    {"modifier", WideToUtf8(ObjectDisplayName(mod).data())},
                     {"index", idx + 1},
                     {"class", WideToUtf8(mod->ClassName().data())},
                 });

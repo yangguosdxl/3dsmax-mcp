@@ -39,6 +39,7 @@ json PointJson(const Point3& p) {
 
 Box3 WorldBoundingBox(INode* node, TimeValue t) {
     Matrix3 nodeTM = node->GetNodeTM(t);
+    const Box3 pivotBox(nodeTM.GetTrans(), nodeTM.GetTrans());
     // EvalWorldState returns the evaluated pipeline object. Its local bounds
     // require the object-offset transform too (and the post-WSM transform if
     // applicable). NodeTM alone double-translates meshes after Center Pivot.
@@ -48,15 +49,13 @@ Box3 WorldBoundingBox(INode* node, TimeValue t) {
 
     ObjectState os = node->EvalWorldState(t);
     if (!os.obj) {
-        worldBox += nodeTM.GetTrans();
-        return worldBox;
+        return pivotBox;
     }
 
     Box3 localBox;
     os.obj->GetDeformBBox(t, localBox);
     if (localBox.IsEmpty()) {
-        worldBox += nodeTM.GetTrans();
-        return worldBox;
+        return pivotBox;
     }
 
     const Point3 mn = localBox.Min();
@@ -74,7 +73,7 @@ Box3 WorldBoundingBox(INode* node, TimeValue t) {
     for (const Point3& corner : corners) {
         worldBox += (corner * objectTM);
     }
-    return worldBox;
+    return worldBox.IsEmpty() ? pivotBox : worldBox;
 }
 
 Point3 BottomCenter(const Box3& bbox) {
@@ -138,7 +137,7 @@ static const char* UnitDisplayName(int type) {
 json UnitsJson() {
     int systemType = UNITS_INCHES;
     float systemScale = 1.0f;
-    GetSystemUnitInfo(&systemType, &systemScale);
+    GetSystemUnitInfoCompat(&systemType, &systemScale);
 
     return {
         { "distanceBase", "system units" },
@@ -236,7 +235,9 @@ void ApplyPosMode(INode* node, TimeValue t, const Point3& targetPos, bool hasTar
     const Box3 bbox = WorldBoundingBox(node, t);
 
     Point3 anchor = pivot;
-    if (mode == PosMode::Center) {
+    if (bbox.IsEmpty()) {
+        anchor = pivot;
+    } else if (mode == PosMode::Center) {
         anchor = BBoxCenter(bbox);
     } else if (mode == PosMode::Ground) {
         anchor = BottomCenter(bbox);
@@ -248,7 +249,8 @@ void ApplyPosMode(INode* node, TimeValue t, const Point3& targetPos, bool hasTar
         return;
     }
 
-    node->Move(t, Matrix3{}, delta, TRUE, TRUE, PIV_NONE, TRUE);
+    // Matrix3() 在 2021 SDK 中并未初始化为单位矩阵，必须显式构造。
+    node->Move(t, Matrix3(TRUE), delta, TRUE, TRUE, PIV_NONE, TRUE);
 }
 
 json BuildSpatialSnapshot(INode* node, TimeValue t, const std::string& typeHint) {

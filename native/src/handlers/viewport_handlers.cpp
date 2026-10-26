@@ -499,7 +499,7 @@ std::string NativeHandlers::CaptureMultiViewMainThread(const std::string& params
         {"right",       {"right",       L"RIGHT",   false, rightTM}},
         {"top",         {"top",         L"TOP",     false, topTM}},
         {"bottom",      {"bottom",      L"BOTTOM",  false, bottomTM}},
-        {"perspective", {"perspective", L"PERSP",   true,  Matrix3()}},
+        {"perspective", {"perspective", L"PERSP",   true,  Matrix3(TRUE)}},
     };
 
     // Collect views to capture

@@ -543,6 +543,11 @@ std::string NativeHandlers::CreateObject(const std::string& params, MCPBridgeGUP
             }
         }
 
+        // 2021 的刚创建对象在依赖通知前可能还没有可用的变形包围盒。
+        obj->NotifyDependents(FOREVER, PART_ALL, REFMSG_CHANGE);
+        node->NotifyDependents(FOREVER, PART_ALL, REFMSG_CHANGE);
+        ip->RedrawViews(t);
+
         // Apply placement using shared spatial semantics.
         SpatialSnapshot::ApplyPosMode(node, t, posOverride, hasPos, posMode);
 

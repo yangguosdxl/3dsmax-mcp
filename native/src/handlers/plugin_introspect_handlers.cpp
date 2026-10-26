@@ -161,7 +161,7 @@ static json ReadPB1Params(Animatable* anim, TimeValue t, const std::string& msRe
         if (!pb1) continue;
 
         json block;
-        MSTR blockName = anim->SubAnimName(si, false);
+        MSTR blockName = SubAnimDisplayName(anim, si);
         block["name"] = WideToUtf8(blockName.data());
         block["subAnimIndex"] = si;
         block["numParams"] = pb1->NumParams();
@@ -173,7 +173,7 @@ static json ReadPB1Params(Animatable* anim, TimeValue t, const std::string& msRe
         int numAnims = pb1->NumSubs();
         for (int ai = 0; ai < numAnims; ai++) {
             int paramIdx = pb1->AnimNumToParamNum(ai);
-            MSTR aname = pb1->SubAnimName(ai, false);
+            MSTR aname = SubAnimDisplayName(pb1, ai);
             if (aname.data() && aname.data()[0])
                 paramNames[paramIdx] = WideToUtf8(aname.data());
         }
@@ -269,7 +269,7 @@ static json DescribeSubAnims(Animatable* anim, int depth, int maxDepth) {
     for (int i = 0; i < n; i++) {
         json sub;
         try {
-            MSTR name = anim->SubAnimName(i, false);
+            MSTR name = SubAnimDisplayName(anim, i);
             sub["name"] = WideToUtf8(name.data());
         } catch (...) {
             sub["name"] = "sub_" + std::to_string(i);
@@ -647,7 +647,7 @@ std::string NativeHandlers::IntrospectInstance(const std::string& params, MCPBri
                 if (!mod) continue;
 
                 json modj;
-                modj["name"] = WideToUtf8(mod->GetName(false).data());
+                modj["name"] = WideToUtf8(ObjectDisplayName(mod).data());
                 modj["class"] = SanitizeScriptName(WideToUtf8(mod->ClassName().data()));
                 modj["enabled"] = mod->IsEnabled() ? true : false;
                 modj["classID"] = json::array({

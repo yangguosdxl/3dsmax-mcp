@@ -93,7 +93,7 @@ static json WalkSubAnims(Animatable* anim, const std::string& path,
             Animatable* child = anim->SubAnim(i);
             if (!child) continue;
 
-            MSTR childNameM = anim->SubAnimName(i, false);
+            MSTR childNameM = SubAnimDisplayName(anim, i);
             if (childNameM.isNull() || childNameM.Length() == 0) continue;
 
             std::string childName = WideToUtf8(childNameM.data());
@@ -164,7 +164,7 @@ std::string NativeHandlers::InspectTrackView(const std::string& params, MCPBridg
             Animatable* child = node->SubAnim(i);
             if (!child) continue;
 
-            MSTR childNameM = node->SubAnimName(i, false);
+            MSTR childNameM = SubAnimDisplayName(node, i);
             if (childNameM.isNull() || childNameM.Length() == 0) continue;
 
             std::string childName = WideToUtf8(childNameM.data());
@@ -290,7 +290,7 @@ std::string NativeHandlers::ListWireableParams(const std::string& params, MCPBri
                 if (!child) continue;
 
                 MSTR childNameM;
-                try { childNameM = f.anim->SubAnimName(i, false); }
+                try { childNameM = SubAnimDisplayName(f.anim, i); }
                 catch (...) { continue; }
                 if (childNameM.isNull() || childNameM.Length() == 0) continue;
 
@@ -685,7 +685,7 @@ std::string NativeHandlers::AddControllerTarget(const std::string& params, MCPBr
 
         // Get controller class name via SDK
         MSTR clsName;
-        ctrl->GetClassName(clsName, false);
+        GetUnlocalizedClassName(ctrl, clsName);
         std::string cls = WideToUtf8(clsName.data());
 
         // Determine controller category and build minimal MAXScript for FP call

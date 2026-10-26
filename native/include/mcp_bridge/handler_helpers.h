@@ -14,6 +14,8 @@
 #include <inode.h>
 #include <object.h>
 #include <modstack.h>
+#include <sfx.h>
+#include <units.h>
 #include <ilayer.h>
 #include <ILayerProperties.h>
 #include <INodeLayerProperties.h>
@@ -49,6 +51,112 @@ inline void RequireMaxScriptThread() {
     if (GetCurrentThreadId() == GetCOREInterface15()->GetMainThreadID()) return;
     throw std::runtime_error(json{{"type", "NativeError"}, {"code", "INTERNAL_ERROR"}, {"retryable", false},
         {"message", "Internal bridge error: MAXScript was called off 3ds Max's main thread; the script did not run"}}.dump());
+}
+
+// 3ds Max 2021 的多项名称接口没有 localization 参数，2023+ 才使用新版重载。
+// 统一封装后，业务代码无需分散复制版本判断。
+inline const MCHAR* NonLocalizedClassDescName(ClassDesc* descriptor) {
+#if MAX_SDK_VERSION >= 2023
+    return descriptor ? descriptor->NonLocalizedClassName() : nullptr;
+#else
+    return descriptor ? descriptor->ClassName() : nullptr;
+#endif
+}
+
+inline MSTR NonLocalizedClassEntryName(const ClassEntry& entry) {
+#if MAX_SDK_VERSION >= 2023
+    return entry.NonLocalizedClassName();
+#else
+    return entry.ClassName();
+#endif
+}
+
+inline double MetersPerUnit() {
+#if MAX_SDK_VERSION >= 2023
+    return GetSystemUnitScale(UNITS_METERS);
+#else
+    return GetMasterScale(UNITS_METERS);
+#endif
+}
+
+inline void GetSystemUnitInfoCompat(int* type, float* scale) {
+#if MAX_SDK_VERSION >= 2023
+    GetSystemUnitInfo(type, scale);
+#else
+    GetMasterUnitInfo(type, scale);
+#endif
+}
+
+inline MSTR SubAnimDisplayName(Animatable* value, int index) {
+#if MAX_SDK_VERSION >= 2023
+    return value->SubAnimName(index, false);
+#else
+    return value->SubAnimName(index);
+#endif
+}
+
+inline void GetUnlocalizedClassName(Animatable* value, MSTR& name) {
+#if MAX_SDK_VERSION >= 2023
+    value->GetClassName(name, false);
+#else
+    value->GetClassName(name);
+#endif
+}
+
+inline MSTR AnimatableClassNameText(Animatable* value) {
+#if MAX_SDK_VERSION >= 2023
+    return value->ClassName(false);
+#else
+    return value->ClassName();
+#endif
+}
+
+inline MSTR SubMtlSlotName(Mtl* material, int index) {
+#if MAX_SDK_VERSION >= 2023
+    return material->GetSubMtlSlotName(index, false);
+#else
+    return material->GetSubMtlSlotName(index);
+#endif
+}
+
+inline MSTR SubTexmapSlotName(MtlBase* value, int index) {
+#if MAX_SDK_VERSION >= 2023
+    return value->GetSubTexmapSlotName(index, false);
+#else
+    return value->GetSubTexmapSlotName(index);
+#endif
+}
+
+template <typename T>
+inline auto ObjectDisplayNameImpl(T* value, int) -> decltype(value->GetName(false)) {
+    return value->GetName(false);
+}
+
+template <typename T>
+inline auto ObjectDisplayNameImpl(T* value, long) -> decltype(value->GetName()) {
+    return value->GetName();
+}
+
+inline MSTR ObjectDisplayName(Mtl* value) { return ObjectDisplayNameImpl(value, 0); }
+inline MSTR ObjectDisplayName(Modifier* value) { return ObjectDisplayNameImpl(value, 0); }
+inline MSTR ObjectDisplayName(SpecialFX* value) { return ObjectDisplayNameImpl(value, 0); }
+
+inline BOOL ExecuteMAXScriptCompat(const MCHAR* script, BOOL quietErrors, FPValue* result,
+                                   BOOL logQuietErrors) {
+#if MAX_SDK_VERSION >= 2023
+    return ExecuteMAXScriptScript(script, MAXScript::ScriptSource::NonEmbedded,
+                                  quietErrors, result, logQuietErrors);
+#else
+    return ExecuteMAXScriptScript(script, quietErrors, result, logQuietErrors);
+#endif
+}
+
+inline Value* CompileMAXScriptSource(Parser* parser, CharStream* source) {
+#if MAX_SDK_VERSION >= 2023
+    return parser->compile(source, MAXScript::ScriptSource::NonEmbedded);
+#else
+    return parser->compile(source);
+#endif
 }
 
 // ── UTF-8 <-> Wide conversion ───────────────────────────────────
@@ -99,7 +207,7 @@ inline std::string ScriptClassName(ClassDesc* descriptor) {
         return SanitizeScriptName(WideToUtf8(internalName));
     }
 
-    const MCHAR* nonLocalizedName = descriptor->NonLocalizedClassName();
+    const MCHAR* nonLocalizedName = NonLocalizedClassDescName(descriptor);
     if (nonLocalizedName && *nonLocalizedName) {
         return SanitizeScriptName(WideToUtf8(nonLocalizedName));
     }
@@ -318,7 +426,7 @@ inline bool SameTransform(const Matrix3& a, const Matrix3& b) {
 inline std::string ControllerClassName(Control* control) {
     if (!control) return "";
     MSTR name;
-    control->GetClassName(name, false);
+    GetUnlocalizedClassName(control, name);
     return WideToUtf8(name.data());
 }
 
@@ -571,7 +679,7 @@ inline std::string MaxScriptFailureMessage(const std::wstring& wcmd, std::string
                 MAXScriptException::ScopedMXSCallstackCaptureDisable noCallstack(_tls);
                 vl.source->flush_whitespace();
                 while (!vl.source->at_eos() || vl.parser->back_tracked) {
-                    vl.parser->compile(vl.source, MAXScript::ScriptSource::NonEmbedded);  // code is never eval()'d
+                    CompileMAXScriptSource(vl.parser, vl.source);  // 只编译，不执行用户代码
                     vl.source->flush_whitespace();
                 }
                 if (vl.parser->expr_level != 0) {
@@ -638,9 +746,8 @@ inline std::string RunMAXScript(
     BOOL ok = FALSE;
 
     try {
-        ok = ExecuteMAXScriptScript(
+        ok = ExecuteMAXScriptCompat(
             wcmd.c_str(),
-            MAXScript::ScriptSource::NonEmbedded,
             TRUE,    // quietErrors: never route agent diagnostics to modal UI
             &fpv,    // result
             TRUE     // logQuietErrors
@@ -703,7 +810,7 @@ inline bool EvaluateMAXScript(const std::wstring& script, const std::function<vo
     McpHost::RunOnMainThread([&] {
         RequireMaxScriptThread();
         FPValue fpv;
-        ok = ExecuteMAXScriptScript(script.c_str(), MAXScript::ScriptSource::NonEmbedded, TRUE, &fpv) != FALSE;
+        ok = ExecuteMAXScriptCompat(script.c_str(), TRUE, &fpv, TRUE) != FALSE;
         if (ok) read(fpv);
         return std::string();
     });
@@ -871,7 +978,7 @@ inline Animatable* ResolveSubAnimPath(INode* node, const std::string& path) {
         for (int s = 0; s < numSubs; s++) {
             Animatable* sub = current->SubAnim(s);
             if (!sub) continue;
-            MSTR subName = current->SubAnimName(s, false);
+            MSTR subName = SubAnimDisplayName(current, s);
             std::string sname = WideToUtf8(subName.data());
             // Case-insensitive compare, also handle underscore vs space
             std::string lTok = tok, lName = sname;
@@ -906,7 +1013,7 @@ inline ClassDesc* FindClassDescByName(const std::string& className, SClass_ID su
             if (superID != 0 && cd->SuperClassID() != superID) continue;
             if (!MatchesClassName(wname, cd->ClassName()) &&
                 !MatchesClassName(wname, cd->InternalName()) &&
-                !MatchesClassName(wname, cd->NonLocalizedClassName())) continue;
+                !MatchesClassName(wname, NonLocalizedClassDescName(cd))) continue;
             if (found && (found->ClassID() != cd->ClassID() ||
                           found->SuperClassID() != cd->SuperClassID()))
                 throw std::runtime_error(StructuredErrorPayload(

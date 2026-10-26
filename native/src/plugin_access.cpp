@@ -70,7 +70,7 @@ ClassDesc* FindClass(const json& p) {
             auto* cd=list[i].CD(); if(!cd) continue;
             if(!MatchesClassName(wideName, cd->InternalName()) &&
                 !MatchesClassName(wideName, list[i].ClassName().data()) &&
-                !MatchesClassName(wideName, list[i].NonLocalizedClassName().data())) continue;
+                !MatchesClassName(wideName, NonLocalizedClassEntryName(list[i]).data())) continue;
             if(found&&(found->ClassID()!=cd->ClassID()||found->SuperClassID()!=cd->SuperClassID()))
                 Fail("AMBIGUOUS","Class name is ambiguous; supply class_ref.");
             found=list[i].FullCD();
@@ -359,7 +359,7 @@ json Context() {
         auto* cd=(*list)[i].CD(); if(cd&&(*list)[i].IsPublic()) renderers.push_back(Identity(cd));
     }
     auto* renderer=ip->GetRenderer(RS_Production);
-    json result={{"session",Session()},{"max_version",MAX_SDK_VERSION},{"meters_per_unit",GetSystemUnitScale(UNITS_METERS)},
+    json result={{"session",Session()},{"max_version",MAX_SDK_VERSION},{"meters_per_unit",MetersPerUnit()},
         {"renderer",renderer?Identity(Descriptor(ClassRef(renderer))):json(nullptr)}, {"renderers",renderers},
         {"environment",OwnerRef(ip->GetEnvironmentMap())},{"environment_enabled",ip->GetUseEnvironmentMap()!=FALSE}};
     result["color_management"]={{"status","legacy_or_unavailable"}};

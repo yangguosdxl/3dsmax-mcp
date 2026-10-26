@@ -39,7 +39,7 @@ inline ClassDesc* FindModifierClass(const std::string& name) {
                         ClassDesc* descriptor = entry.CD();
                         if (!descriptor) continue;
                         for (const MCHAR* alias : {descriptor->InternalName(),
-                                 descriptor->NonLocalizedClassName(), descriptor->ClassName()}) {
+                                 NonLocalizedClassDescName(descriptor), descriptor->ClassName()}) {
                             if (alias && _wcsicmp(alias, wanted.c_str()) == 0) {
                                 matches = true;
                                 break;

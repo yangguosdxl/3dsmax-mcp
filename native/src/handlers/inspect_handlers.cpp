@@ -276,7 +276,7 @@ std::string NativeHandlers::InspectObject(const std::string& params, MCPBridgeGU
                 Modifier* mod = dobj->GetModifier(m);
                 if (!mod) continue;
                 json modJ;
-                modJ["name"] = WideToUtf8(mod->GetName(false).data());
+                modJ["name"] = WideToUtf8(ObjectDisplayName(mod).data());
                 modJ["class"] = SanitizeScriptName(WideToUtf8(mod->ClassName().data()));
                 modJ["enabled"] = mod->IsEnabled() ? true : false;
                 modJ["enabledInViews"] = mod->IsEnabledInViews() ? true : false;

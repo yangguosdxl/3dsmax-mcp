@@ -971,7 +971,7 @@ static json RunMaterialReplacement(
                 }
             }
         } else {
-            MSTR slotLabel = match.parent->GetSubMtlSlotName(match.slot, false);
+            MSTR slotLabel = SubMtlSlotName(match.parent, match.slot);
             where = {{"kind", "sub_material"},
                      {"parent_material", MaterialName(match.parent)},
                      {"parent_class", MaxScriptVisibleClassName(match.parent)},
