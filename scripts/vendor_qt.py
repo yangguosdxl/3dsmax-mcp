@@ -14,6 +14,7 @@ Run again after changing qt_dialogs.cpp's Qt includes or Qt calls:
 
 from __future__ import annotations
 
+import os
 import re
 import shutil
 import subprocess
@@ -25,14 +26,31 @@ ROOT = Path(__file__).resolve().parents[1]
 SOURCE = ROOT / "native" / "src" / "qt_dialogs.cpp"
 CACHE = ROOT / "local" / "qt-sdk"
 OUT = ROOT / "native" / "third_party" / "qt"
-VCVARS = Path(r"C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\VC\Auxiliary\Build\vcvars64.bat")
+VSWHERE = Path(r"C:\Program Files (x86)\Microsoft Visual Studio\Installer\vswhere.exe")
 
-# Max 2023/2024 ship Qt 5.15.1; 2025/2026 ship 6.5.3 and 2027 ships 6.8.3.
-# Qt keeps binary compatibility within a major version, so 6.5.3 serves 2025+.
-# Max 2027 compiles as C++20, earlier versions as C++17.
+# 3ds Max 2021 使用 Qt 5.12.5，2023/2024 使用 Qt 5.15.1，
+# 2025/2026 使用 Qt 6.5.3，2027 使用 Qt 6.8.3。
+# Qt 在同一大版本内保持二进制兼容，因此 6.5.3 可覆盖 2025 及以后版本。
+# 3ds Max 2027 使用 C++20，2021-2026 使用 C++17。
 VERSIONS = {
-    "5.15.1": {"major": 5, "standards": ["/std:c++17"]},
-    "6.5.3": {"major": 6, "standards": ["/std:c++17", "/std:c++20"]},
+    "5.12.5": {
+        "major": 5,
+        "package": "win64_msvc2017_64",
+        "install_dir": "msvc2017_64",
+        "standards": ["/std:c++17"],
+    },
+    "5.15.1": {
+        "major": 5,
+        "package": "win64_msvc2019_64",
+        "install_dir": "msvc2019_64",
+        "standards": ["/std:c++17"],
+    },
+    "6.5.3": {
+        "major": 6,
+        "package": "win64_msvc2019_64",
+        "install_dir": "msvc2019_64",
+        "standards": ["/std:c++17", "/std:c++20"],
+    },
 }
 MODULES = ("Core", "Gui", "Widgets")
 # Mirrors native/CMakeLists.txt for qt_dialogs.cpp. Optimized and unoptimized
@@ -42,22 +60,53 @@ FLAGS = ["/nologo", "/c", "/EHa", "/GR", "/MD", "/Zc:__cplusplus", "/permissive-
 OPTIMIZATION = ["/O2", "/Od"]
 
 
-def sdk_dir(version: str) -> Path:
-    path = CACHE / version / "msvc2019_64"
+def find_vcvars() -> Path:
+    configured = os.environ.get("VCVARS", "").strip()
+    if configured:
+        path = Path(configured)
+        if path.is_file():
+            return path
+        raise RuntimeError(f"VCVARS points to a missing file: {path}")
+
+    if VSWHERE.is_file():
+        result = subprocess.run(
+            [str(VSWHERE), "-latest", "-products", "*", "-requires",
+             "Microsoft.VisualStudio.Component.VC.Tools.x86.x64", "-property", "installationPath"],
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            check=True,
+        )
+        installation = result.stdout.strip()
+        if installation:
+            path = Path(installation) / "VC" / "Auxiliary" / "Build" / "vcvars64.bat"
+            if path.is_file():
+                return path
+
+    raise RuntimeError("Cannot find Visual Studio C++ tools; set VCVARS to vcvars64.bat")
+
+
+VCVARS = find_vcvars()
+
+
+def sdk_dir(version: str, config: dict) -> Path:
+    path = CACHE / version / config["install_dir"]
     if not (path / "include" / "QtWidgets").is_dir():
         CACHE.mkdir(parents=True, exist_ok=True)
         subprocess.run(["uvx", "--from", "aqtinstall", "aqt", "install-qt", "windows", "desktop", version,
-                        "win64_msvc2019_64", "--archives", "qtbase", "-O", str(CACHE)], check=True)
+                        config["package"], "--archives", "qtbase", "-O", str(CACHE)], check=True)
     return path
 
 
 def run_vs(command: list[str], cwd: Path) -> str:
     line = subprocess.list2cmdline(command)
-    result = subprocess.run(f'call "{VCVARS}" >nul && {line}', shell=True, cwd=cwd,
-                            capture_output=True, text=True, errors="replace")
+    # 中文版 MSVC 会把 /showIncludes 翻译成中文，强制英文输出才能稳定解析依赖头文件。
+    result = subprocess.run(f'set "VSLANG=1033" && call "{VCVARS}" >nul && {line}', shell=True, cwd=cwd,
+                            capture_output=True, text=True, encoding="utf-8", errors="replace")
     if result.returncode:
         raise RuntimeError(f"{command[0]} failed:\n{result.stdout}\n{result.stderr}")
-    return result.stdout
+    # MSVC 可能把 /showIncludes 备注写到 stderr，依赖头文件必须同时解析两路输出。
+    return result.stdout + "\n" + result.stderr
 
 
 def exported(lib: Path, work: Path) -> dict[str, str]:
@@ -75,7 +124,7 @@ def exported(lib: Path, work: Path) -> dict[str, str]:
 
 
 def vendor(version: str, config: dict) -> None:
-    sdk = sdk_dir(version)
+    sdk = sdk_dir(version, config)
     include_root = (sdk / "include").resolve()
     headers: set[Path] = set()
     imported: set[str] = set()
@@ -86,10 +135,14 @@ def vendor(version: str, config: dict) -> None:
             output = run_vs(["cl", *FLAGS, standard, optimization, f"/I{ROOT / 'native' / 'include'}",
                              f"/I{ROOT / 'native' / 'third_party'}", f"/I{include_root}",
                              f"/Fo{obj}", str(SOURCE)], work)
-            for match in re.finditer(r"Note: including file:\s+(.+)", output):
-                path = Path(match.group(1).strip()).resolve()
-                if path.is_relative_to(include_root):
-                    headers.add(path)
+            for line in output.splitlines():
+                for marker in ("Note: including file:", "注意: 包含文件:", "注意：包含文件："):
+                    if marker not in line:
+                        continue
+                    path = Path(line.split(marker, 1)[1].strip()).resolve()
+                    if path.is_relative_to(include_root):
+                        headers.add(path)
+                    break
             for line in run_vs(["dumpbin", "/symbols", str(obj)], work).splitlines():
                 if "UNDEF" in line and "External" in line and "| " in line:
                     imported.add(line.split("| ", 1)[1].split()[0].removeprefix("__imp_"))
@@ -97,6 +150,7 @@ def vendor(version: str, config: dict) -> None:
         target = OUT / version
         if target.exists():
             shutil.rmtree(target)
+        target.mkdir(parents=True, exist_ok=True)
         for header in sorted(headers):
             dest = target / "include" / header.relative_to(include_root)
             dest.parent.mkdir(parents=True, exist_ok=True)

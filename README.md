@@ -16,15 +16,18 @@ Automate everything!
 ## Features
 
 - **161 MCP tools** — For scene reads, modeling, materials, modifiers, controllers, viewport capture, procedural graphs, and plugin workflows.
-- **Native Bridge** — only 2023-2027 versions.
+- **Native Bridge** — 2021 and 2023-2027 versions.
 - **Introspection** — discover arbitrary Max classes for all kinds of automation and scripting purposes. 
 - **Bundled agent skill** — There is a bundled maxscript documentation if you want to create your own tools.
 - **FStorm materials and lights** — `FStorm`/`FStormPBR` texture import, palette laydown and smart import; create and edit plane/disc/sphere lights and suns with native solar controls.
 
 ## Requirements
 
-- Windows and Autodesk **3ds Max 2023–2027**
+- Windows and Autodesk **3ds Max 2021 and 2023–2027**
 - An MCP client, such as Claude Desktop, Codex or Cursor
+
+Prebuilt bridges are included for 2023–2027. 3ds Max 2021 is supported from
+source and requires the 2021 SDK, Visual Studio 2017 (v141), and Qt 5.12.5.
 
 ## Quick start
 

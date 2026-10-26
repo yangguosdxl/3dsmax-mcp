@@ -22,7 +22,7 @@ from datetime import datetime
 from pathlib import Path
 
 NATIVE = Path(__file__).resolve().parents[1] / "native"
-VERSIONS = ("2023", "2024", "2025", "2026", "2027")
+VERSIONS = ("2021", "2023", "2024", "2025", "2026", "2027")
 CORE_DLL = Path("Release") / "core" / "mcp_core.dll"
 SHELL_GUP = Path("Release") / "mcp_bridge.gup"
 TRUE = {"ON", "1", "TRUE", "YES", "Y"}
@@ -79,8 +79,12 @@ def configure(args) -> None:
     existing = read_cache(target)
     if existing and existing.get("MCP_HOT_CORE", "").upper() not in TRUE:
         sys.exit(f"refusing to reconfigure static build {target} with MCP_HOT_CORE=ON")
-    candidates = [Path(args.reference).resolve()] if args.reference else \
-        [NATIVE / f"build-{version}", NATIVE / "build-2027"]
+    if args.reference:
+        candidates = [Path(args.reference).resolve()]
+    elif version == "2021":
+        candidates = [NATIVE / "build-2021"]
+    else:
+        candidates = [NATIVE / f"build-{version}", NATIVE / "build-2027"]
     reference = next((c for c in candidates if read_cache(c)), None)
     if args.reference and not reference:
         sys.exit(f"--reference {args.reference} is not a configured build directory")
@@ -92,7 +96,8 @@ def configure(args) -> None:
     command = [cmake_exe(existing or ref), "-S", str(NATIVE), "-B", str(target)]
     if not existing:  # a new tree: the reference build's Visual Studio instance, so the same MSVC
         print(f"Generator settings from {reference or 'build.bat defaults'}")
-        command += ["-G", ref.get("CMAKE_GENERATOR") or "Visual Studio 17 2022",
+        default_generator = "Visual Studio 15 2017" if version == "2021" else "Visual Studio 17 2022"
+        command += ["-G", ref.get("CMAKE_GENERATOR") or default_generator,
                     "-A", ref.get("CMAKE_GENERATOR_PLATFORM") or "x64"]
         if ref.get("CMAKE_GENERATOR_TOOLSET"):
             command += ["-T", ref["CMAKE_GENERATOR_TOOLSET"]]

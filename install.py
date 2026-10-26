@@ -10,6 +10,7 @@ Skip skill install: uv run python install.py --skip-skill
 
 import argparse
 import base64
+import ctypes
 import csv
 import filecmp
 import json
@@ -31,6 +32,7 @@ ROOT = Path(__file__).resolve().parent
 IS_PACKAGED = Path(__file__).name == "installer.py"
 
 GUP_SRCS = {
+    2021: ROOT / "native" / "bin" / "mcp_bridge_2021.gup",
     2023: ROOT / "native" / "bin" / "mcp_bridge_2023.gup",
     2024: ROOT / "native" / "bin" / "mcp_bridge_2024.gup",
     2025: ROOT / "native" / "bin" / "mcp_bridge_2025.gup",
@@ -149,10 +151,41 @@ PACKAGE_CONTENTS_TEMPLATE = BUNDLE_SRC / "PackageContents.xml.in"
 APP_VERSION_PLACEHOLDER = "__APP_VERSION__"
 
 
+def _fixed_autodesk_roots() -> list[Path]:
+    """返回本机固定磁盘上的 Autodesk 安装根目录。
+
+    3ds Max 可以安装在 C 盘之外。旧安装器只检查 C 盘，因此会漏掉有效的自定义安装。
+    """
+    roots: list[Path] = []
+    try:
+        mask = ctypes.windll.kernel32.GetLogicalDrives()
+    except AttributeError:
+        mask = 0
+
+    for index in range(26):
+        if mask and not mask & (1 << index):
+            continue
+        drive = f"{chr(ord('A') + index)}:\\"
+        if mask and ctypes.windll.kernel32.GetDriveTypeW(drive) != 3:  # DRIVE_FIXED
+            continue
+        roots.append(Path(drive) / "Program Files" / "Autodesk")
+    return roots
+
+
 def max_dir_for_year(year: int) -> Path:
     env = os.environ.get(f"ADSK_3DSMAX_x64_{year}", "").strip()
     if env:
         return Path(env)
+
+    roots = {
+        Path(os.environ.get("ProgramFiles", "")) / "Autodesk",
+        Path(os.environ.get("ProgramW6432", "")) / "Autodesk",
+        *_fixed_autodesk_roots(),
+    }
+    for root in roots:
+        candidate = root / f"3ds Max {year}"
+        if (candidate / "3dsmax.exe").exists():
+            return candidate
     return Path(rf"C:\Program Files\Autodesk\3ds Max {year}")
 
 
@@ -293,10 +326,25 @@ def remove_retired_chat_macros() -> None:
             print(f"  Could not remove retired MCP Chat macro {path}: {error}")
 
 
-def package_contents_xml(app_version: str) -> str:
+def package_contents_xml(app_version: str, years: list[int]) -> str:
     if PACKAGE_CONTENTS_TEMPLATE.exists():
+        if not years:
+            raise RuntimeError("Cannot create PackageContents.xml without any bridge binaries")
+        components = []
+        for year in sorted(years):
+            components.append(
+                '  <Components Description="plugins parts">\n'
+                f'    <RuntimeRequirements OS="Win64" Platform="3ds Max" SeriesMin="{year}" SeriesMax="{year}" />\n'
+                f'    <ComponentEntry ModuleName="./Contents/bin/mcp_bridge_{year}.gup" />\n'
+                '  </Components>'
+            )
         text = PACKAGE_CONTENTS_TEMPLATE.read_text(encoding="utf-8")
-        return text.replace(APP_VERSION_PLACEHOLDER, app_version)
+        return (
+            text.replace(APP_VERSION_PLACEHOLDER, app_version)
+            .replace("__BRIDGE_COMPONENTS__", "\n".join(components))
+            .replace("__MIN_YEAR__", str(min(years)))
+            .replace("__MAX_YEAR__", str(max(years)))
+        )
     raise FileNotFoundError(f"Missing bundle template: {PACKAGE_CONTENTS_TEMPLATE}")
 
 
@@ -337,7 +385,7 @@ def stage_bundle(dest: Path, allow_hot_shell: bool = False) -> tuple[list[int], 
         shutil.copy2(MS_SERVER, scripts_dir / "mcp_server.ms")
 
     (dest / "PackageContents.xml").write_text(
-        package_contents_xml(pkg_version()), encoding="utf-8"
+        package_contents_xml(pkg_version(), included), encoding="utf-8"
     )
     return included, missing
 
@@ -745,7 +793,7 @@ def main() -> int:
             label = f" ({year})" if year else ""
             print(f"  {max_dir}{label}")
     else:
-        print("\nNo 3ds Max installations detected (2023–2027).")
+        print("\nNo 3ds Max installations detected (2021, 2023–2027).")
 
     tool_profile = choose_tool_profile(args.tool_profile)
 

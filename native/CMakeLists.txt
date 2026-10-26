@@ -13,12 +13,16 @@ endif()
 message(STATUS "mcp_bridge version: ${MCP_BRIDGE_VERSION}")
 
 # ── Max version ──────────────────────────────────────────────────
-set(MAX_VERSION "2026" CACHE STRING "Target 3ds Max version (2023, 2024, 2025, 2026, 2027)")
+set(MAX_VERSION "2026" CACHE STRING "Target 3ds Max version (2021, 2023, 2024, 2025, 2026, 2027)")
 message(STATUS "Building for 3ds Max ${MAX_VERSION}")
+
+if(NOT MAX_VERSION MATCHES "^(2021|2023|2024|2025|2026|2027)$")
+    message(FATAL_ERROR "Unsupported 3ds Max version: ${MAX_VERSION}")
+endif()
 
 project(mcp_bridge VERSION ${MCP_BRIDGE_VERSION} LANGUAGES CXX)
 
-# 3ds Max 2027 SDK requires C++20; earlier versions use C++17.
+# 3ds Max 2027 SDK 需要 C++20，2021-2026 使用 C++17。
 if(MAX_VERSION GREATER_EQUAL 2027)
     set(CMAKE_CXX_STANDARD 20)
 else()
@@ -26,8 +30,8 @@ else()
 endif()
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-# Compiler requirements per version:
-#   2023-2026 -> C++17
+# 各版本编译器要求：
+#   2021-2026 -> C++17（2021 使用 Visual Studio 2017 / v141）
 #   2027+     -> C++20
 if(MAX_VERSION GREATER_EQUAL 2027)
     message(STATUS "Max 2027+ SDK: C++20 enabled")
@@ -196,7 +200,10 @@ endfunction()
 # no Qt binary is shipped. It compiles against vendored headers of the oldest Qt
 # of Max's major version and links import libraries generated from the vendored
 # symbol lists. Regenerate both with scripts/vendor_qt.py.
-if(MAX_VERSION GREATER_EQUAL 2025)
+if(MAX_VERSION EQUAL 2021)
+    # 3ds Max 2021 使用 Qt 5.12.5 和 Visual Studio 2017 v141 工具集。
+    set(MCP_QT_VERSION "5.12.5")
+elseif(MAX_VERSION GREATER_EQUAL 2025)
     set(MCP_QT_VERSION "6.5.3")
 else()
     set(MCP_QT_VERSION "5.15.1")

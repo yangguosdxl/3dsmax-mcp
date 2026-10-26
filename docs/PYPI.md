@@ -7,7 +7,7 @@ controllers, captures viewports, and inspects plugins through a broad dedicated 
 The optional progressive profile advertises three discovery/dispatch tools and lazy-loads
 exact operational schemas on demand, reducing context use for local or smaller models.
 
-- **Native bridge** — a C++ plugin for 3ds Max 2023–2027, no MAXScript polling
+- **Native bridge** — a C++ plugin for 3ds Max 2021 and 2023–2027, no MAXScript polling
 - **Agent viewport** — an independent floating view for navigation, visual targeting and captures
 - **Editable modeling** — guarded component edits, named curves, sweeps and lofts with parameters saved in the scene
 - **Introspection** — discover arbitrary Max classes, plugin surfaces, and parameters at runtime
@@ -30,7 +30,7 @@ user config, and registers the server with the AI clients it can find. Local or 
 can save context with `3dsmax-mcp-install --tool-profile progressive` for an unattended install.
 **Restart 3ds Max afterwards** so the plugin loads.
 
-**Requirements:** Windows · Python 3.12+ · 3ds Max 2023–2027
+**Requirements:** Windows · Python 3.12+ · 3ds Max 2021 and 2023–2027
 
 Manual MCP client setup, tool profiles, safe mode and architecture notes are documented in
 [docs/ADVANCED.md](https://github.com/cl0nazepamm/3dsmax-mcp/blob/master/docs/ADVANCED.md).
@@ -45,7 +45,7 @@ Manual MCP client setup, tool profiles, safe mode and architecture notes are doc
 用中文描述你要做的事，智能体通过专用 MCP 工具直接操作场景——创建物体、构建材质、驱动修改器与控制器、
 截取视口、检查插件。可选的 progressive 配置只公开三个发现/调用工具，按需加载精确工具参数，可减少本地或较小模型的上下文占用。
 
-- **原生桥接**：3ds Max 2023–2027 的 C++ 插件，无需 MAXScript 轮询
+- **原生桥接**：3ds Max 2021、2023–2027 的 C++ 插件，无需 MAXScript 轮询
 - **智能体视口**：独立浮动视口，用于导航、视觉定位和截图
 - **可编辑建模**：带校验的组件编辑、命名曲线、扫描和放样，参数保存在场景中
 - **运行时自省**：可发现任意 Max 类、插件接口与参数
@@ -68,7 +68,7 @@ pip install 3dsmax-mcp -i https://pypi.tuna.tsinghua.edu.cn/simple
 `ApplicationPlugins` 目录、写入用户配置，并尽可能自动注册到已安装的 AI 客户端。本地或较小模型可用
 `3dsmax-mcp-install --tool-profile progressive`。**装完请重启 3ds Max**，插件才会加载。
 
-**环境要求：** Windows · Python 3.12+ · 3ds Max 2023–2027
+**环境要求：** Windows · Python 3.12+ · 3ds Max 2021、2023–2027
 
 国内常用的 **Cline + DeepSeek** 配置方式、建筑可视化与 MMD 动画上手示例、以及其他国内镜像，
 见中文文档

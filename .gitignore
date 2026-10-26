@@ -19,6 +19,7 @@ nul
 cache/
 local/
 .env
+aqtinstall.log
 
 # Live smoke run output (redirected stdout/stderr)
 smoke_out.json

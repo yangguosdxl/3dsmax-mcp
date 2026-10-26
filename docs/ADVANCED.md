@@ -18,7 +18,7 @@ Release builds link the whole bridge into that one GUP. Development builds can s
 
 - Python 3.12+
 - [uv](https://docs.astral.sh/uv/)
-- Autodesk 3ds Max 2023–2027
+- Autodesk 3ds Max 2021 and 2023–2027
 
 ## Installation details
 
@@ -54,7 +54,7 @@ After install, restart 3ds Max. The installer:
 %ProgramData%\Autodesk\ApplicationPlugins\3dsmax-mcp\
   PackageContents.xml
   Contents\
-    bin\mcp_bridge_2023.gup … mcp_bridge_2027.gup
+    bin\mcp_bridge_2021.gup, mcp_bridge_2023.gup … mcp_bridge_2027.gup
     scripts\mcp_server.ms
 ```
 
@@ -248,6 +248,11 @@ cd native
 ```
 
 Windows batch note: quote CMake `-D` paths when the repo or SDK path contains spaces.
+
+3ds Max 2021 uses the 3ds Max 2020 SDK ABI, Visual Studio 2017 with the v141
+toolset, and Qt 5.12.5. Install the 2021 SDK, then run `.\build.bat 2021` (or
+set `ADSK_3DSMAX_SDK_2021` to its `maxsdk` directory). The build script selects
+the Visual Studio 2017 generator automatically.
 
 ## Hot-reloadable native core (development)
 

@@ -23,7 +23,7 @@ if not exist "%CMAKE_EXE%" (
 )
 
 if /I "%TARGET%"=="all" (
-    for %%Y in (2023 2024 2025 2026 2027) do call :build_one %%Y || goto :fail
+    for %%Y in (2021 2023 2024 2025 2026 2027) do call :build_one %%Y || goto :fail
     goto :done
 )
 
@@ -34,11 +34,14 @@ goto :done
 :build_one
 set "MAX_VERSION=%~1"
 if "%MAX_VERSION%"=="" exit /b 1
-if not "%MAX_VERSION%"=="2023" if not "%MAX_VERSION%"=="2024" if not "%MAX_VERSION%"=="2025" if not "%MAX_VERSION%"=="2026" if not "%MAX_VERSION%"=="2027" (
+if not "%MAX_VERSION%"=="2021" if not "%MAX_VERSION%"=="2023" if not "%MAX_VERSION%"=="2024" if not "%MAX_VERSION%"=="2025" if not "%MAX_VERSION%"=="2026" if not "%MAX_VERSION%"=="2027" (
     echo Unsupported Max version: %MAX_VERSION%
-    echo Usage: build.bat [all^|2023^|2024^|2025^|2026^|2027] [deploy]
+    echo Usage: build.bat [all^|2021^|2023^|2024^|2025^|2026^|2027] [deploy]
     exit /b 1
 )
+
+set "CMAKE_GENERATOR=Visual Studio 17 2022"
+if "%MAX_VERSION%"=="2021" set "CMAKE_GENERATOR=Visual Studio 15 2017"
 
 set "MAXSDK_ENV=ADSK_3DSMAX_SDK_%MAX_VERSION%"
 set "MAXSDK_PATH=!%MAXSDK_ENV%!"
@@ -56,7 +59,7 @@ if not exist "%MAXSDK_PATH%\include\max.h" (
 echo.
 echo === Building 3ds Max %MAX_VERSION% native bridge ===
 echo [1/3] Configuring...
-"%CMAKE_EXE%" -S "%NATIVE_DIR%" -B "%BUILD_DIR%" -G "Visual Studio 17 2022" -A x64 -DMAX_VERSION=%MAX_VERSION% "-DMAXSDK_PATH=%MAXSDK_PATH%"
+"%CMAKE_EXE%" -S "%NATIVE_DIR%" -B "%BUILD_DIR%" -G "%CMAKE_GENERATOR%" -A x64 -DMAX_VERSION=%MAX_VERSION% "-DMAXSDK_PATH=%MAXSDK_PATH%"
 if errorlevel 1 exit /b 1
 
 echo [2/3] Building Release...
